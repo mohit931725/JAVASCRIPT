@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Drawing Tool with Working Eraser</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        .drawing-container {
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+            width: 600px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .drawing-header {
+            background-color: #f4f4f4;
+            padding: 10px 15px;
+            font-weight: bold;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .drawing-header button {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #eee;
+            cursor: pointer;
+        }
+
+        .drawing-header button.active {
+            background-color: #ddd;
+        }
+
+        .drawing-canvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body>
+    <div class="drawing-container">
+        <div class="drawing-header">
+            SVG Drawing Tool
+            <button id="drawBtn">Draw</button>
+            <button id="eraserBtn">Eraser</button>
+        </div>
+        <svg id="drawingCanvas" class="drawing-canvas"></svg>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const drawBtn = document.getElementById('drawBtn');
+        const eraserBtn = document.getElementById('eraserBtn');
+
+        let isDrawing = false;
+        let isErasing = false;
+        let currentPath;
+        let paths = [];
+        let pt = canvas.createSVGPoint();
+
+        drawBtn.classList.add('active');
+
+        drawBtn.addEventListener('click', () => {
+            isErasing = false;
+            drawBtn.classList.add('active');
+            eraserBtn.classList.remove('active');
+            canvas.style.cursor = 'crosshair';
+        });
+
+        eraserBtn.addEventListener('click', () => {
+            isErasing = true;
+            eraserBtn.classList.add('active');
+            drawBtn.classList.remove('active');
+            canvas.style.cursor = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23000000\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'M20.2 1.8a2.12 2.12 0 013 3l-14.7 14.7a.85.85 0 01-1.2 0l-5.1-5.1a.85.85 0 010-1.2l14.7-14.7z\'/%3E%3Cpath d=\'M19 12l-7 7\'/%3E%3C/svg%3E") 12 12, auto';
+        });
+
+        canvas.addEventListener('mousedown', startAction);
+        canvas.addEventListener('mousemove', performAction);
+        canvas.addEventListener('mouseup', stopAction);
+        canvas.addEventListener('mouseleave', stopAction);
+
+        function startAction(e) {
+            isDrawing = true;
+            if (isErasing) {
+                eraseAt(e);
+            } else {
+                const { x, y } = getMousePosition(e);
+                currentPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                currentPath.setAttribute('fill', 'none');
+                currentPath.setAttribute('stroke', '#007bff');
+                currentPath.setAttribute('stroke-width', '4');
+                currentPath.setAttribute('stroke-linecap', 'round');
+                currentPath.setAttribute('d', `M${x} ${y}`);
+                canvas.appendChild(currentPath);
+            }
+        }
+
+        function performAction(e) {
+            if (!isDrawing) return;
+
+            if (isErasing) {
+                eraseAt(e);
+            } else {
+                const { x, y } = getMousePosition(e);
+                const d = currentPath.getAttribute('d');
+                currentPath.setAttribute('d', `${d} L${x} ${y}`);
+            }
+        }
+
+        function stopAction() {
+            if (!isErasing && currentPath) {
+                paths.push(currentPath);
+            }
+            isDrawing = false;
+            currentPath = null;
+        }
+
+        function eraseAt(e) {
+            const { x, y } = getMousePosition(e);
+            pt.x = x;
+            pt.y = y;
+
+            for (let i = paths.length - 1; i >= 0; i--) {
+                const path = paths[i];
+                // Check if the mouse point is on the stroke of the path
+                if (path.isPointInStroke(pt)) {
+                    canvas.removeChild(path);
+                    paths.splice(i, 1);
+                    break; 
+                }
+            }
+        }
+
+        function getMousePosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+    </script>
+</body>
+</html>
